@@ -1,58 +1,71 @@
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-#define MATRIX_SIZE 2
-int calculateInverse(int matrix[MATRIX_SIZE][MATRIX_SIZE], int inverse[MATRIX_SIZE][MATRIX_SIZE]) 
-{
-    int det = matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0];
-    if (det == 0) 
-	{
-        return 0; 
-    }
-    inverse[0][0] = matrix[1][1];
-    inverse[0][1] = -matrix[0][1];
-    inverse[1][0] = -matrix[1][0];
-    inverse[1][1] = matrix[0][0];
-    for (int i = 0; i < MATRIX_SIZE; i++) 
-	{
-        for (int j = 0; j < MATRIX_SIZE; j++) 
-		{
-            inverse[i][j] = inverse[i][j] / det;
-        }
-    }
-    return 1;
+#include <string.h>
+#include <math.h>
+
+#define MOD 26
+
+int determinant(int a, int b, int c, int d) {
+    return (a * d - b * c + MOD) % MOD;
 }
-void encrypt(int matrix[MATRIX_SIZE][MATRIX_SIZE], char* plaintext, char* ciphertext) {
-    int len = strlen(plaintext);
-    for (int i = 0; i < len; i += 2) {
-        int p[MATRIX_SIZE], c[MATRIX_SIZE];
-        for (int j = 0; j < MATRIX_SIZE; j++) {
-            p[j] = plaintext[i + j] - 'A';
-        }
-        for (int j = 0; j < MATRIX_SIZE; j++) {
-            c[j] = 0;
-            for (int k = 0; k < MATRIX_SIZE; k++) {
-                c[j] += matrix[j][k] * p[k];
-            }
-            c[j] = c[j] % 26;
-        }
-        for (int j = 0; j < MATRIX_SIZE; j++) {
-            ciphertext[i + j] = 'A' + c[j];
+
+int modInverse(int a, int m) {
+    for (int i = 1; i < m; ++i) {
+        if ((a * i) % m == 1) {
+            return i;
         }
     }
+    return -1;
 }
+
+void inverseMatrix(int matrix[2][2], int inverse[2][2]) {
+    int det = determinant(matrix[0][0], matrix[0][1], matrix[1][0], matrix[1][1]);
+
+    int invDet = modInverse(det, MOD);
+
+    inverse[0][0] = (matrix[1][1] * invDet) % MOD;
+    inverse[0][1] = ((-1 * matrix[0][1]) * invDet + MOD) % MOD;
+    inverse[1][0] = ((-1 * matrix[1][0]) * invDet + MOD) % MOD;
+    inverse[1][1] = (matrix[0][0] * invDet) % MOD;
+}
+
+void hillCipherEncrypt(char plaintext[], int key[2][2]) {
+    int length = strlen(plaintext);
+    int ciphertext[length];
+
+    for (int i = 0; i < length; i += 2) {
+        int x = plaintext[i] - 'A';
+        int y = (i + 1 < length) ? plaintext[i + 1] - 'A' : 'X' - 'A'; 
+
+        ciphertext[i] = (key[0][0] * x + key[0][1] * y) % MOD;
+        ciphertext[i + 1] = (key[1][0] * x + key[1][1] * y) % MOD;
+    }
+
+    printf("Encrypted message: ");
+    for (int i = 0; i < length; ++i) {
+        printf("%c", ciphertext[i] + 'A');
+    }
+    printf("\n");
+}
+
 int main() {
-    int key[MATRIX_SIZE][MATRIX_SIZE] = {{3, 3}, {2, 5}};
     char plaintext[100];
-    char ciphertext[100];
-    printf("Enter the plaintext (uppercase letters only): ");
-    scanf("%s", plaintext);
-    int inverse[MATRIX_SIZE][MATRIX_SIZE];
-    if (calculateInverse(key, inverse)) {
-        encrypt(key, plaintext, ciphertext);
-        printf("Ciphertext: %s\n", ciphertext);
-    } else {
-        printf("Key matrix is not invertible. Choose a different key.\n");
+    int key[2][2];
+
+    printf("Enter the key matrix (4 integers): ");
+    for (int i = 0; i < 2; ++i) {
+        for (int j = 0; j < 2; ++j) {
+            scanf("%d", &key[i][j]);
+        }
     }
+
+    printf("Enter the plaintext (in uppercase): ");
+    scanf("%s", plaintext);
+
+    int inverseKey[2][2];
+    inverseMatrix(key, inverseKey);
+
+    hillCipherEncrypt(plaintext, key);
+
     return 0;
 }
