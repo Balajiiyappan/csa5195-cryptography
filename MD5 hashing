@@ -1,0 +1,107 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+#define LEFTROTATE(x, c) (((x) << (c)) | ((x) >> (32 - (c))))
+uint32_t MD5_CONSTANTS[] = {
+    0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476
+};
+uint32_t F(uint32_t X, uint32_t Y, uint32_t Z) {
+    return (X & Y) | (~X & Z);
+}
+uint32_t G(uint32_t X, uint32_t Y, uint32_t Z) {
+    return (X & Z) | (Y & ~Z);
+}
+uint32_t H(uint32_t X, uint32_t Y, uint32_t Z) {
+    return X ^ Y ^ Z;
+}
+uint32_t I(uint32_t X, uint32_t Y, uint32_t Z) {
+    return Y ^ (X | ~Z);
+}
+void MD5Transform(uint32_t *state, const uint32_t *block) {
+    uint32_t A = state[0], B = state[1], C = state[2], D = state[3];
+    uint32_t M[16];
+    for (int i = 0; i < 16; ++i)
+        M[i] = block[i];
+    for (int i = 0; i < 16; ++i) {
+        A = B + LEFTROTATE((A + F(B, C, D) + M[i] + MD5_CONSTANTS[0]), 7);
+        D = A + LEFTROTATE((D + F(A, B, C) + M[i + 1] + MD5_CONSTANTS[0]), 12);
+        C = D + LEFTROTATE((C + F(D, A, B) + M[i + 2] + MD5_CONSTANTS[0]), 17);
+        B = C + LEFTROTATE((B + F(C, D, A) + M[i + 3] + MD5_CONSTANTS[0]), 22);
+        i += 3;
+    }
+    for (int round = 1; round <= 3; ++round) {
+        for (int i = 0; i < 16; ++i) {
+            int shift, constant;
+            switch (round) {
+                case 1:
+                    shift = (5 * i + 1) % 16;
+                    constant = 1;
+                    break;
+                case 2:
+                    shift = (3 * i + 5) % 16;
+                    constant = 5;
+                    break;
+                case 3:
+                    shift = (7 * i) % 16;
+                    constant = 3;
+                    break;
+            }
+            A = B + LEFTROTATE((A + G(B, C, D) + M[shift] + MD5_CONSTANTS[round * 4 - constant]), round * 4 + 5);
+            D = A + LEFTROTATE((D + G(A, B, C) + M[(shift + 5) % 16] + MD5_CONSTANTS[round * 4 - constant + 1]), round * 4 + 9);
+            C = D + LEFTROTATE((C + G(D, A, B) + M[(shift + 10) % 16] + MD5_CONSTANTS[round * 4 - constant + 2]), round * 4 + 14);
+            B = C + LEFTROTATE((B + G(C, D, A) + M[(shift + 15) % 16] + MD5_CONSTANTS[round * 4 - constant + 3]), round * 4 + 20);
+        }
+    }
+    state[0] += A;
+    state[1] += B;
+    state[2] += C;
+    state[3] += D;
+    memset(M, 0, sizeof(M));
+}
+void MD5Pad(const char *input, uint64_t length, uint32_t *result) {
+    uint64_t newLength = (length + 8 + 63) & ~63;
+    char *paddedMessage = (char *)malloc(newLength);
+    if (!paddedMessage) {
+        fprintf(stderr, "Memory allocation failed.\n");
+        exit(EXIT_FAILURE);
+    }
+    memcpy(paddedMessage, input, length);
+    paddedMessage[length] = 0x80;
+    for (uint64_t i = length + 1; i < newLength - 8; ++i)
+        paddedMessage[i] = 0;
+    uint64_t bitLength = length * 8;
+    for (int i = 0; i < 8; ++i)
+        paddedMessage[newLength - 8 + i] = (bitLength >> (i * 8)) & 0xFF;
+    for (uint64_t i = 0; i < newLength; i += 64) {
+        MD5Transform(result, (const uint32_t *)(paddedMessage + i));
+    }
+    free(paddedMessage);
+}
+void MD5Hash(const char *input, uint32_t *hash) {
+    hash[0] = MD5_CONSTANTS[0];
+    hash[1] = MD5_CONSTANTS[1];
+    hash[2] = MD5_CONSTANTS[2];
+    hash[3] = MD5_CONSTANTS[3];
+    MD5Pad(input, strlen(input), hash);
+}
+void printMD5Hash(const uint32_t *hash) {
+    for (int i = 0; i < 4; ++i) {
+        printf("%08x", hash[i]);
+    }
+    printf("\n");
+}
+int main() {
+    char input[1024];
+    uint32_t hash[4];
+    printf("Enter a string to hash with MD5: ");
+    fgets(input, sizeof(input), stdin);
+    size_t len = strlen(input);
+    if (len > 0 && input[len - 1] == '\n') {
+        input[len - 1] = '\0';
+    }
+    MD5Hash(input, hash);
+    printf("MD5 Hash: ");
+    printMD5Hash(hash);
+    return 0;
+}
