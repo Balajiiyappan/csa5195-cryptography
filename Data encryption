@@ -1,0 +1,34 @@
+#include <stdio.h>
+#include <stdint.h>
+int initial_permutation_table[] = {
+};
+int key_permutation_table[] = {
+};
+uint64_t initial_permutation(uint64_t data) {
+    uint64_t result = 0;
+    for (int i = 0; i < 64; i++) {
+        result |= ((data >> (64 - initial_permutation_table[i])) & 1) << (63 - i);
+    }
+    return result;
+}
+uint64_t key_permutation(uint64_t key) {
+    uint64_t result = 0;
+    for (int i = 0; i < 56; i++) {
+        result |= ((key >> (64 - key_permutation_table[i])) & 1) << (55 - i);
+    }
+    return result;
+}
+int main() {
+    uint64_t plaintext_block, des_key;
+    printf("Enter 64-bit plaintext in hexadecimal: ");
+    scanf("%llx", &plaintext_block);
+    printf("Enter 64-bit DES key in hexadecimal: ");
+    scanf("%llx", &des_key);
+    uint64_t permuted_data = initial_permutation(plaintext_block);
+    uint64_t permuted_key = key_permutation(des_key);
+    printf("\nPlaintext: %llx\n", plaintext_block);
+    printf("Initial Permutation: %llx\n", permuted_data);
+    printf("Key: %llx\n", des_key);
+    printf("Key Permutation: %llx\n", permuted_key);
+    return 0;
+}
